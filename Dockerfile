@@ -40,6 +40,9 @@ COPY app/           ./app/
 COPY wsgi.py        .
 COPY gunicorn.conf.py .
 COPY entrypoint.sh  .
+COPY data/ ./data/
+COPY models/ ./models/
+COPY static/ ./static/
 
 # ── Runtime directories (may be bind-mounted as volumes) ──────
 RUN mkdir -p /app/data /app/models /app/logs /app/static
