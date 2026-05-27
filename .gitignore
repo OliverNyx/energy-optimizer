@@ -1,0 +1,7 @@
+.env
+logs/
+__pycache__/
+*.pyc
+.git
+app.zip
+data/H1_combined.csv

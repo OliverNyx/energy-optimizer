@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Energy Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+:root {
+  --bg:#0D2B45;--card:#1A3A5C;--card2:#0F2035;
+  --green:#02C39A;--amber:#F39C12;--red:#E74C3C;
+  --blue:#2980B9;--purple:#8E44AD;--orange:#E67E22;
+  --text:#ECF0F1;--muted:#7F8C8D;--border:#2C4A6E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── Header ── */
+.header{background:var(--card2);border-bottom:2px solid var(--green);
+        padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+        flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:100}
+.header h1{font-size:18px;color:var(--green);font-weight:700;letter-spacing:.02em}
+.header p{font-size:11px;color:var(--muted);margin-top:2px}
+.hright{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{background:var(--card);border:1px solid var(--border);border-radius:8px;
+       padding:7px 12px;text-align:center;min-width:90px}
+.badge .hr{font-size:20px;font-weight:700;color:var(--green)}
+.badge .dt{font-size:10px;color:var(--muted)}
+.sched-badge{background:var(--card);border:1px solid var(--amber);border-radius:8px;
+             padding:7px 14px;text-align:center}
+.sched-badge .sd{font-size:13px;font-weight:700;color:var(--amber)}
+.sched-badge .sp{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── Layout ── */
+.main{display:grid;grid-template-columns:1fr 340px;gap:14px;padding:14px 24px;
+      max-width:1600px;margin:0 auto}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:10px;border:1px solid var(--border);
+      padding:14px;margin-bottom:12px}
+.card h2{font-size:10px;color:var(--muted);text-transform:uppercase;
+         letter-spacing:.07em;margin-bottom:10px;font-weight:600}
+
+/* ── Stats row ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--card2);border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+.stat .v{font-size:19px;font-weight:700}
+.stat .l{font-size:10px;color:var(--muted);margin-top:2px}
+.gv{color:var(--green)}.av{color:var(--amber)}.rv{color:var(--red)}.bv{color:var(--blue)}
+
+/* ── Alert / recommendation ── */
+.alert{border-radius:8px;padding:9px 13px;margin-bottom:10px;font-size:12px;
+       font-weight:600;display:none}
+.alert.show{display:block}
+.alert.golden{background:rgba(243,156,18,.15);border:1px solid var(--amber);color:var(--amber)}
+.alert.danger {background:rgba(231,76,60,.15); border:1px solid var(--red);  color:var(--red)}
+.alert.surplus{background:rgba(2,195,154,.12); border:1px solid var(--green);color:var(--green)}
+.rec-box{border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;
+         font-weight:600;border:1px solid var(--border);background:rgba(41,128,185,.08);
+         color:var(--muted)}
+.rec-golden {background:rgba(243,156,18,.15);border-color:var(--amber);color:var(--amber)}
+.rec-danger {background:rgba(231,76,60,.15); border-color:var(--red);  color:var(--red)}
+.rec-surplus{background:rgba(2,195,154,.12); border-color:var(--green);color:var(--green)}
+.rec-deficit{background:rgba(231,76,60,.08); border-color:var(--border);color:var(--muted)}
+
+/* ── Schedule items ── */
+.sitem{display:flex;align-items:center;padding:9px 11px;border-radius:7px;
+       margin-bottom:5px;border:1px solid var(--border);background:var(--card2)}
+.sitem.fb{border-color:var(--amber)}.sitem.ub{border-color:var(--green)}
+.sitem.pb{border-color:var(--purple)}.sitem.rb{border-color:var(--blue)}
+.adot{width:9px;height:9px;border-radius:50%;margin-right:9px;flex-shrink:0}
+.ainf{flex:1}
+.aname{font-size:12px;font-weight:600}
+.asub{font-size:10px;color:var(--muted);margin-top:2px}
+.ahour{font-size:17px;font-weight:700;color:var(--green);min-width:48px;text-align:right}
+.bge{font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:5px}
+.bfr{background:rgba(2,195,154,.2);color:var(--green)}
+.bur{background:rgba(41,128,185,.2);color:var(--blue)}
+.bpg{background:rgba(142,68,173,.2);color:var(--purple)}
+.brr{background:rgba(243,156,18,.2);color:var(--amber)}
+
+/* ── Saving box ── */
+.saving{background:linear-gradient(135deg,rgba(2,195,154,.15),rgba(2,195,154,.05));
+        border:1px solid var(--green);border-radius:8px;padding:12px;
+        margin-bottom:10px;text-align:center}
+.saving .big{font-size:26px;font-weight:700;color:var(--green)}
+.saving .sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── Forms ── */
+.oform{background:var(--card2);border-radius:8px;padding:11px;
+       border:1px solid var(--border);margin-bottom:8px}
+.oform label{font-size:10px;color:var(--muted);display:block;margin-bottom:3px}
+.oform select,.oform input{width:100%;background:var(--card);border:1px solid var(--border);
+  border-radius:5px;color:var(--text);padding:6px 9px;font-size:12px;margin-bottom:7px;
+  outline:none}
+.oform select:focus,.oform input:focus{border-color:var(--green)}
+.btn{width:100%;padding:9px;border-radius:7px;border:none;font-size:12px;font-weight:700;
+     cursor:pointer;margin-bottom:5px;transition:opacity .15s,transform .1s}
+.btn:hover{opacity:.88;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.5;cursor:default;transform:none}
+.btn-amber {background:var(--amber); color:#000}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-blue  {background:var(--blue);  color:#fff}
+.btn-green {background:var(--green); color:#000}
+.btn-muted {background:var(--border);color:var(--text)}
+.btn-red   {background:var(--red);   color:#fff}
+
+/* ── Log items ── */
+.litem{font-size:10px;padding:5px 9px;border-radius:0 4px 4px 0;
+       margin-bottom:3px;color:var(--muted)}
+.litem.manual    {border-left:3px solid var(--blue);  background:var(--card2)}
+.litem.unexpected{border-left:3px solid var(--purple);background:var(--card2)}
+.litem span{color:var(--text);font-weight:600}
+
+/* ── Appliance table ── */
+.appl-table{width:100%;border-collapse:collapse;font-size:11px}
+.appl-table th{text-align:left;color:var(--muted);font-size:9px;text-transform:uppercase;
+               padding:3px 7px;border-bottom:1px solid var(--border)}
+.appl-table td{padding:5px 7px;border-bottom:1px solid rgba(44,74,110,.3);vertical-align:top}
+.appl-table tr:last-child td{border-bottom:none}
+.hour-chip{display:inline-block;background:var(--card);border:1px solid var(--border);
+           border-radius:3px;padding:1px 4px;font-size:9px;margin:1px}
+.hour-chip.solar{border-color:var(--amber);color:var(--amber)}
+.hour-chip.cheap{border-color:var(--green);color:var(--green)}
+.hour-chip.punta{border-color:var(--red);  color:var(--red)}
+
+/* ── Gantt ── */
+.gantt-bar{position:absolute;height:24px;border-radius:3px;display:flex;
+           align-items:center;justify-content:center;font-size:9px;font-weight:700;
+           color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;
+           transition:transform .15s;border:1px solid rgba(255,255,255,.25)}
+.gantt-bar:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.gantt-bar.free  {background:linear-gradient(135deg,var(--green),rgba(2,195,154,.7))}
+.gantt-bar.paid  {background:linear-gradient(135deg,var(--blue),rgba(41,128,185,.7))}
+.gantt-bar.override{background:linear-gradient(135deg,var(--amber),rgba(243,156,18,.7))}
+
+/* ── Misc ── */
+.loading{text-align:center;padding:20px;color:var(--muted);font-size:12px}
+.spin{width:20px;height:20px;border:2px solid var(--border);
+      border-top-color:var(--green);border-radius:50%;
+      animation:spin .7s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.noi{font-size:11px;color:var(--muted);text-align:center;padding:12px}
+.scen-chip{display:inline-block;font-size:8px;padding:1px 4px;border-radius:2px;
+           margin-left:3px;font-weight:700;background:rgba(243,156,18,.25);color:var(--amber)}
+.scen-chip.golden {background:rgba(243,156,18,.3); color:var(--amber)}
+.scen-chip.danger {background:rgba(231,76,60,.3);  color:var(--red)}
+.scen-chip.surplus{background:rgba(2,195,154,.25); color:var(--green)}
+.cost-row{display:flex;justify-content:space-between;align-items:center;
+          padding:7px 0;border-bottom:1px solid rgba(44,74,110,.3)}
+.cost-row:last-child{border-bottom:none}
+.cost-label{font-size:11px;color:var(--muted)}
+.cost-value{font-size:15px;font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HEADER ══════════════ -->
+<div class="header">
+  <div>
+    <h1>⚡ Smart Energy Dashboard</h1>
+    <p>Barcelona — 6 AM Rolling LP Scheduler + Smart Plug Monitor</p>
+  </div>
+  <div class="hright">
+    <div class="sched-badge">
+      <div style="font-size:9px;color:var(--muted);margin-bottom:2px">📅 SCHEDULE FOR</div>
+      <div class="sd" id="sched-date">Loading…</div>
+      <div class="sp" id="sched-period">—</div>
+    </div>
+    <div class="badge">
+      <div class="hr" id="cur-hour">--:--</div>
+      <div class="dt" id="cur-date">Now</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ MAIN GRID ══════════════ -->
+<div class="main">
+
+<!-- ════ LEFT COLUMN ════ -->
+<div>
+
+  <!-- Live stats -->
+  <div class="stats">
+    <div class="stat"><div class="v gv" id="solar-v">--</div><div class="l">☀️ Solar kWh</div></div>
+    <div class="stat"><div class="v bv" id="cons-v">--</div> <div class="l">🏠 Consumption</div></div>
+    <div class="stat"><div class="v av" id="price-v">--</div><div class="l">💰 €/kWh</div></div>
+    <div class="stat"><div class="v" id="state-v">--</div>   <div class="l">⚡ Energy state</div></div>
+  </div>
+
+  <div class="alert" id="alert-box"></div>
+  <div class="rec-box" id="rec-box">🔍 Loading recommendation…</div>
+
+  <!-- When to run each appliance -->
+  <div class="card">
+    <h2>When to Run Each Appliance</h2>
+    <div id="appl-table-wrap">
+      <div class="loading"><div class="spin"></div>Loading plan…</div>
+    </div>
+  </div>
+
+  <!-- Energy profile chart -->
+  <div class="card">
+    <h2>⚡ 24-Hour Energy Profile — Solar / Consumption / Price</h2>
+    <div style="position:relative;height:280px">
+      <canvas id="energy-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Cost comparison -->
+  <div class="card">
+    <h2>💰 Cost — Baseline vs LP Optimized</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="position:relative;height:200px">
+        <canvas id="cost-chart"></canvas>
+      </div>
+      <div style="background:var(--card2);border-radius:8px;padding:12px;
+                  border:1px solid var(--border)">
+        <div class="cost-row">
+          <span class="cost-label">Baseline</span>
+          <span class="cost-value rv">€<span id="stat-baseline">--</span></span>
+        </div>
+        <div class="cost-row">
+          <span class="cost-label">Optimized</span>
+          <span class="cost-value gv">€<span id="stat-optimized">--</span></span>
+        </div>
+        <div class="cost-row">
+          <span class="cost-label">Daily Saving</span>
+          <span class="cost-value av">€<span id="stat-saving">--</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gantt timeline -->
+  <div class="card">
+    <h2>📅 Appliance Timeline (24h)</h2>
+    <div style="overflow-x:auto;background:var(--card2);border-radius:8px;
+                padding:10px;border:1px solid var(--border)">
+      <div id="gantt-container" style="min-width:700px">
+        <div class="loading"><div class="spin"></div>Loading timeline…</div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--muted);margin-top:7px;display:flex;gap:12px;flex-wrap:wrap">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--blue);
+            border-radius:2px;margin-right:3px;vertical-align:middle"></span>LP Scheduled</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--amber);
+            border-radius:2px;margin-right:3px;vertical-align:middle"></span>Override / Plug</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);
+            border-radius:2px;margin-right:3px;vertical-align:middle"></span>Free solar</span>
+    </div>
+  </div>
+
+  <!-- Optimised schedule list -->
+  <div class="card">
+    <h2>Today's LP-Optimized Appliance Schedule</h2>
+    <div id="sched-list">
+      <div class="loading"><div class="spin"></div>Generating schedule…</div>
+    </div>
+  </div>
+
+  <!-- Event log -->
+  <div class="card">
+    <h2>Event Log</h2>
+    <div id="event-log"><p class="noi">No events today.</p></div>
+  </div>
+
+</div><!-- /left -->
+
+<!-- ════ RIGHT COLUMN ════ -->
+<div>
+
+  <!-- Daily saving -->
+  <div class="saving">
+    <div class="big" id="saving-big">€--</div>
+    <div class="sub" id="saving-sub">Daily LP saving</div>
+  </div>
+
+  <!-- Date selector -->
+  <div class="card">
+    <h2>Schedule Control</h2>
+    <div class="oform">
+      <label>Schedule which date?</label>
+      <input type="date" id="target-date">
+      <button class="btn btn-green" id="btn-date" onclick="regenerateForDate()">
+        📅 Generate For This Date
+      </button>
+      <button class="btn btn-muted" id="btn-regen" onclick="regenerate()">
+        🔄 Next Available Day
+      </button>
+    </div>
+  </div>
+
+  <!-- Smart plug / manual override -->
+  <div class="card">
+    <h2>Smart Plug Monitor</h2>
+    <p style="font-size:10px;color:var(--muted);margin-bottom:9px;line-height:1.5">
+      Report when an appliance ran. Exact minute used for sub-hourly
+      cost proration (e.g. 11:45 → only 15 min billed in hour 11).
+    </p>
+    <div class="oform">
+      <label>Appliance</label>
+      <select id="plug-appliance">
+        <option value="wm">Washing Machine</option>
+        <option value="boiler">Boiler</option>
+        <option value="ac1">AC Unit 1</option>
+        <option value="ac2">AC Unit 2</option>
+      </select>
+      <label>Time (HH:MM — minute-precise)</label>
+      <input type="time" id="plug-time" value="11:00">
+      <div style="font-size:9px;color:var(--muted);margin:-4px 0 8px">
+        11:45 → only 15 min billed in hour 11
+      </div>
+      <button class="btn btn-purple" id="btn-plug" onclick="sendEvent('unexpected')">
+        ⚡ Smart Plug Detected Usage
+      </button>
+      <button class="btn btn-amber" id="btn-manual" onclick="sendEvent('manual')">
+        👤 I Manually Ran This
+      </button>
+    </div>
+  </div>
+
+  <!-- Simulation advance -->
+  <div class="card">
+    <h2>Simulation Control</h2>
+    <button class="btn btn-blue" onclick="nextHour()">⏭ Advance 1 Hour (demo)</button>
+  </div>
+
+  <!-- LP decision log -->
+  <div class="card">
+    <h2>LP Decision Log</h2>
+    <div id="lp-log"><p class="noi">Load schedule to see decisions.</p></div>
+  </div>
+
+</div><!-- /right -->
+
+</div><!-- /main -->
+
+<!-- ══════════════ JAVASCRIPT ══════════════ -->
+<script>
+"use strict";
+
+// API base — works for localhost AND university domain
+const API = window.location.origin;
+
+const NAMES = {
+  wm:"Washing Machine", boiler:"Boiler",
+  ac1:"AC Unit 1",      ac2:"AC Unit 2"
+};
+
+let schedData  = null;
+let charts     = {};   // { energy, cost }
+
+// ── Utility ───────────────────────────────────────────────────
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+function setBtn(id, label, disabled){
+  const b = document.getElementById(id);
+  if(!b) return;
+  b.textContent = label;
+  b.disabled    = disabled;
+}
+
+// ── Status poll ───────────────────────────────────────────────
+async function loadStatus(){
+  try{
+    const d = await fetch(API+"/api/status").then(r=>r.json());
+
+    document.getElementById("cur-hour").textContent =
+      pad2(d.current_hour||0)+":00";
+    if(d.date_str) document.getElementById("cur-date").textContent = d.date_str;
+
+    document.getElementById("solar-v").textContent  = (d.solar_now||0).toFixed(3);
+    document.getElementById("cons-v").textContent   = (d.consumption_now||0).toFixed(3);
+    document.getElementById("price-v").textContent  = "€"+(d.price_now||0).toFixed(4);
+
+    const sv = document.getElementById("state-v");
+    sv.textContent = d.energy_state||"--";
+    sv.className = "v "+(d.energy_state==="SURPLUS"?"gv":d.energy_state==="DEFICIT"?"rv":"av");
+
+    // Alert banner
+    const ab = document.getElementById("alert-box");
+    ab.className = "alert";
+    if(d.is_golden){
+      ab.className = "alert show golden";
+      ab.textContent = "🌟 GOLDEN HOUR — Free solar + Peak price! Run heavy appliances NOW!";
+    } else if(d.is_danger){
+      ab.className = "alert show danger";
+      ab.textContent = "⚠️ DANGER — No solar + Peak price. Delay all non-essential loads!";
+    } else if(d.energy_state==="SURPLUS"){
+      ab.className = "alert show surplus";
+      ab.textContent = "☀️ Solar surplus available — good time to run appliances.";
+    }
+
+    // Recommendation
+    updateRec(d.scenario, d.recommendation);
+  } catch(e){ console.warn("Status error",e); }
+}
+
+function updateRec(scenario, text){
+  const el = document.getElementById("rec-box");
+  if(!el) return;
+  const map = {
+    GOLDEN_HOUR:"rec-golden", DANGER_WINDOW:"rec-danger",
+    SURPLUS_LLANO:"rec-surplus", SURPLUS_VALLE:"rec-surplus",
+    DEFICIT_LLANO:"rec-deficit", DEFICIT_VALLE:"rec-deficit",
+  };
+  el.className = "rec-box "+(map[scenario]||"");
+  el.textContent = text||"🔍 Monitoring…";
+}
+
+// ── Schedule load ─────────────────────────────────────────────
+async function loadSchedule(){
+  try{
+    schedData = await fetch(API+"/api/schedule").then(r=>r.json());
+    renderAll(schedData);
+  } catch(e){ console.warn("Schedule error",e); }
+}
+
+async function loadAvailableDates(){
+  try{
+    const d = await fetch(API+"/api/available_dates").then(r=>r.json());
+    const pk = document.getElementById("target-date");
+    if(d.dates && d.dates.length){
+      pk.min = d.dates[0];
+      pk.max = d.dates[d.dates.length-1];
+      pk.value = d.dates[0];
+    }
+  } catch(e){ console.warn("Dates error",e); }
+}
+
+// ── Render all panels ─────────────────────────────────────────
+function renderAll(d){
+  // Build appliance_schedule from items if key absent
+  let appl = d.appliance_schedule||{};
+  if(!Object.keys(appl).length && Array.isArray(d.schedule)){
+    d.schedule.forEach(item=>{
+      appl[item.name] = {
+        hours:       item.active_hours||[item.scheduled_hour],
+        total_energy:item.total_energy,
+        is_free:     item.is_free,
+        price_band:  item.price_band,
+        scenario:    item.scenario||"",
+        shifted:     item.shifted,
+        status:      item.status,
+      };
+    });
+  }
+
+  renderApplianceTable(appl);
+  renderScheduleList(d.schedule||[]);
+  renderEventLog(d.override_history||[]);
+  renderLPLog(d.schedule||[]);
+  if(d.chart_data && d.chart_data.length) renderEnergyChart(d.chart_data);
+
+  const baseline  = d.baseline_cost||0;
+  const optimized = d.optimized_cost||0;
+  const saving    = Math.abs(d.daily_saving || baseline-optimized);
+  renderCostChart(baseline, optimized, saving);
+
+  if(d.schedule && d.schedule.length) renderGantt(d.schedule);
+
+  document.getElementById("saving-big").textContent = "€"+saving.toFixed(4);
+  if(d.day_display)  document.getElementById("sched-date").textContent   = d.day_display;
+  if(d.sched_period) document.getElementById("sched-period").textContent = d.sched_period;
+  const gt = d.generated_at||d.rescheduled_at||"";
+  document.getElementById("saving-sub").textContent = gt ? "Generated: "+gt : "Daily LP saving";
+  document.getElementById("stat-baseline").textContent  = baseline.toFixed(4);
+  document.getElementById("stat-optimized").textContent = optimized.toFixed(4);
+  document.getElementById("stat-saving").textContent    = saving.toFixed(4);
+}
+
+// ── Appliance table ───────────────────────────────────────────
+function renderApplianceTable(appl){
+  const el = document.getElementById("appl-table-wrap");
+  if(!el) return;
+  if(!Object.keys(appl).length){
+    el.innerHTML="<p class='noi'>No appliance schedule yet.</p>"; return;
+  }
+
+  const solarByHour={}, priceByHour={};
+  if(schedData && schedData.chart_data){
+    schedData.chart_data.forEach(c=>{
+      solarByHour[c.hour]=c.solar;
+      priceByHour[c.hour]=c.price_band;
+    });
+  }
+
+  let html="<table class='appl-table'><thead><tr>"
+          +"<th>Appliance</th><th>Run At</th><th>Energy</th><th>Status</th>"
+          +"</tr></thead><tbody>";
+
+  for(const [name,info] of Object.entries(appl)){
+    const hours = info.hours||[];
+    const chips = hours.map(h=>{
+      const sol  = solarByHour[h]||0;
+      const band = priceByHour[h]||"LOW";
+      const cls  = sol>0.1?"solar":band==="LOW"?"cheap":band==="HIGH"?"punta":"";
+      return "<span class='hour-chip "+cls+"'>"+pad2(h)+":00</span>";
+    }).join("");
+    const freeTag  = info.is_free
+      ? "<span style='color:var(--green)'>FREE ☀️</span>"
+      : "<span style='color:var(--muted)'>€ Grid</span>";
+    const shiftTag = info.shifted
+      ? "<span style='color:var(--amber)'>LP shifted</span>"
+      : "<span style='color:var(--muted)'>unchanged</span>";
+    const scenTag  = info.scenario
+      ? "<br><span style='font-size:8px;color:var(--muted)'>"+info.scenario.replace(/_/g," ")+"</span>"
+      : "";
+    html+="<tr>"
+        +"<td><strong>"+name+"</strong>"+scenTag+"</td>"
+        +"<td>"+chips+"</td>"
+        +"<td>"+(info.total_energy||0).toFixed(4)+" kWh<br>"+freeTag+"</td>"
+        +"<td>"+shiftTag+"</td>"
+        +"</tr>";
+  }
+  html+="</tbody></table>";
+  html+="<div style='margin-top:7px;font-size:9px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap'>"
+       +"<span><span class='hour-chip solar' style='display:inline-block'>—</span> Solar</span>"
+       +"<span><span class='hour-chip cheap' style='display:inline-block'>—</span> Cheap</span>"
+       +"<span><span class='hour-chip punta' style='display:inline-block'>—</span> Peak</span>"
+       +"</div>";
+  el.innerHTML = html;
+}
+
+// ── Energy chart ──────────────────────────────────────────────
+function renderEnergyChart(chartData){
+  const ctx = document.getElementById("energy-chart");
+  if(!ctx) return;
+
+  const hours       = chartData.map(d=>pad2(d.hour)+":00");
+  const solar       = chartData.map(d=>d.solar||0);
+  const consumption = chartData.map(d=>d.consumption||0);
+  const prices      = chartData.map(d=>d.price||0);
+  const maxP        = Math.max(...prices,0.01);
+  const maxS        = Math.max(...solar,0.01);
+  const priceScaled = prices.map(p=>(p/maxP)*maxS*1.2);
+
+  if(charts.energy) charts.energy.destroy();
+  charts.energy = new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:hours,
+      datasets:[
+        {label:"☀️ Solar (kWh)",data:solar,backgroundColor:"rgba(243,156,18,.7)",
+         borderColor:"#F39C12",borderWidth:1,borderRadius:3,order:2,yAxisID:"y"},
+        {label:"🏠 Consumption (kWh)",data:consumption,backgroundColor:"rgba(41,128,185,.5)",
+         borderColor:"#2980B9",borderWidth:1,borderRadius:3,order:3,yAxisID:"y"},
+        {label:"💰 Price (scaled)",data:priceScaled,type:"line",borderColor:"#E74C3C",
+         borderWidth:2,backgroundColor:"rgba(231,76,60,.1)",fill:true,tension:0.3,
+         pointRadius:2,pointBackgroundColor:"#E74C3C",order:1,yAxisID:"y"},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:"top",labels:{color:"#ECF0F1",font:{size:10,weight:"600"},
+                padding:10,usePointStyle:true}},
+        tooltip:{
+          backgroundColor:"rgba(13,43,69,.92)",titleColor:"#ECF0F1",
+          bodyColor:"#ECF0F1",borderColor:"#2C4A6E",borderWidth:1,padding:9,
+          callbacks:{afterLabel:ctx2=>{
+            if(ctx2.datasetIndex===2)
+              return "Actual: €"+prices[ctx2.dataIndex].toFixed(4)+"/kWh";
+            return "";
+          }}
+        }
+      },
+      scales:{
+        y:{ticks:{color:"#7F8C8D",font:{size:9},callback:v=>v.toFixed(2)+" kWh"},
+           grid:{color:"rgba(44,74,110,.2)"}},
+        x:{ticks:{color:"#7F8C8D",font:{size:8}},grid:{color:"transparent"}},
+      }
+    }
+  });
+}
+
+// ── Cost comparison chart ─────────────────────────────────────
+function renderCostChart(baseline, optimized, saving){
+  const ctx = document.getElementById("cost-chart");
+  if(!ctx) return;
+  if(charts.cost) charts.cost.destroy();
+  charts.cost = new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:["Daily Cost"],
+      datasets:[
+        {label:"📊 Baseline",data:[baseline],backgroundColor:"rgba(231,76,60,.7)",
+         borderColor:"#E74C3C",borderWidth:2,borderRadius:5,barThickness:50},
+        {label:"✅ LP Optimized",data:[optimized],backgroundColor:"rgba(2,195,154,.7)",
+         borderColor:"#02C39A",borderWidth:2,borderRadius:5,barThickness:50},
+      ]
+    },
+    options:{
+      indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:"top",labels:{color:"#ECF0F1",font:{size:9,weight:"600"},
+                padding:10,usePointStyle:true}},
+        tooltip:{backgroundColor:"rgba(13,43,69,.92)",titleColor:"#ECF0F1",
+                 bodyColor:"#ECF0F1",borderColor:"#2C4A6E",borderWidth:1,padding:9,
+                 callbacks:{label:c=>"€"+c.parsed.x.toFixed(4)}}
+      },
+      scales:{
+        x:{ticks:{color:"#7F8C8D",font:{size:9},callback:v=>"€"+v.toFixed(2)},
+           grid:{color:"rgba(44,74,110,.2)"}},
+        y:{ticks:{color:"#7F8C8D",font:{size:10,weight:"600"}},grid:{display:false}},
+      }
+    }
+  });
+}
+
+// ── Gantt chart ───────────────────────────────────────────────
+function renderGantt(items){
+  const c = document.getElementById("gantt-container");
+  if(!c||!items.length){ if(c) c.innerHTML="<p class='noi'>No schedule.</p>"; return; }
+
+  const appMap={}, appList=[];
+  items.forEach(item=>{
+    if(!appMap[item.key]){
+      appList.push({key:item.key,name:item.name,color:item.color,items:[]});
+      appMap[item.key]=appList.length-1;
+    }
+    appList[appMap[item.key]].items.push(item);
+  });
+
+  const rows = appList.map(a=>{
+    const bars = a.items.map(item=>{
+      const hrs     = item.active_hours||[item.scheduled_hour];
+      const startH  = Math.min(...hrs);
+      const endH    = Math.max(...hrs);
+      const wPct    = ((endH-startH+1)/24)*100;
+      const lPct    = (startH/24)*100;
+      const over    = item.user_forced||item.smart_plug_event==="unexpected";
+      const cls     = over?"override":item.is_free?"free":"paid";
+      const label   = item.is_free?"FREE ☀️":"€"+item.price_at_hour.toFixed(3);
+      return "<div class='gantt-bar "+cls+"' "
+           +"style='left:"+lPct+"%;width:"+wPct+"%;top:0' "
+           +"title='"+item.name+" @ "+pad2(startH)+":00 — "+label+"'>"
+           +"<span>"+label+"</span></div>";
+    }).join("");
+    return "<div style='position:relative;height:28px;margin-bottom:6px;display:flex;align-items:center'>"
+          +"<div style='width:110px;padding-right:8px;text-align:right;font-size:10px;"
+          +"font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;"
+          +"text-overflow:ellipsis;flex-shrink:0'>"+a.name+"</div>"
+          +"<div style='position:relative;flex:1;height:28px;background:var(--card);"
+          +"border-radius:3px;border:1px solid var(--border);overflow:hidden'>"+bars+"</div></div>";
+  }).join("");
+
+  const markers = Array.from({length:25},(_,i)=>{
+    const l=(i/24)*100;
+    return "<div style='position:absolute;left:"+l+"%;top:0;font-size:8px;"
+          +"color:var(--muted);font-weight:600;transform:translateX(-50%)'>"
+          +pad2(i)+":00</div>";
+  }).join("");
+
+  c.innerHTML = "<div style='position:relative;height:18px;margin-bottom:8px;margin-left:118px'>"
+               +markers+"</div><div>"+rows+"</div>";
+}
+
+// ── Schedule list ─────────────────────────────────────────────
+function renderScheduleList(items){
+  const el = document.getElementById("sched-list");
+  if(!el) return;
+  if(!items.length){ el.innerHTML="<p class='noi'>No schedule items.</p>"; return; }
+
+  el.innerHTML = items.map(item=>{
+    let cls="",badge="",scen="";
+    if(item.smart_plug_event==="unexpected"){
+      cls="pb";badge="<span class='bge bpg'>⚡ PLUG</span>";
+    } else if(item.user_forced){
+      cls="ub";badge="<span class='bge bur'>👤 USER</span>";
+    } else if(item.status==="rescheduled"){
+      cls="rb";badge="<span class='bge brr'>🔄 RESCHED</span>";
+    } else if(item.is_free){
+      cls="fb";badge="<span class='bge bfr'>☀️ FREE</span>";
+    }
+    if(item.scenario){
+      const sc=item.scenario;
+      const scCls=sc.includes("GOLDEN")?"golden":sc.includes("DANGER")?"danger":
+                  sc.includes("SURPLUS")?"surplus":"";
+      scen="<span class='scen-chip "+scCls+"'>"+sc.replace(/_/g," ")+"</span>";
+    }
+    const cost = item.is_free?"⚡ Free solar":"💰 €"+item.price_at_hour.toFixed(4)+" ("+item.price_band+")";
+    const active = item.active_hours && item.active_hours.length>1
+      ? "<br>Active: "+item.active_hours.map(h=>pad2(h)+":00").join(", "):"";
+    const note = item.user_note
+      ? "<br><span style='color:var(--blue)'>"+item.user_note+"</span>":"";
+    return "<div class='sitem "+cls+"'>"
+          +"<div class='adot' style='background:"+item.color+"'></div>"
+          +"<div class='ainf'>"
+          +"<div class='aname'>"+item.name+badge+scen+"</div>"
+          +"<div class='asub'>"+cost+" | "+item.total_energy.toFixed(4)+" kWh"+active+note+"</div>"
+          +"</div>"
+          +"<div class='ahour'>"+pad2(item.scheduled_hour)+":00</div>"
+          +"</div>";
+  }).join("");
+}
+
+// ── Event log ─────────────────────────────────────────────────
+function renderEventLog(history){
+  const el = document.getElementById("event-log");
+  if(!el) return;
+  if(!history.length){ el.innerHTML="<p class='noi'>No events today.</p>"; return; }
+  el.innerHTML = history.slice().reverse().map(h=>{
+    const cls  = h.event_type==="unexpected"?"unexpected":"manual";
+    const icon = h.event_type==="unexpected"?"⚡":"👤";
+    const time = h.minute ? pad2(h.hour||0)+":"+pad2(h.minute||0) : pad2(h.hour||0)+":00";
+    return "<div class='litem "+cls+"'>"+icon
+          +" <span>"+h.time+"</span> — "
+          +(NAMES[h.appliance]||h.appliance)
+          +" at <span>"+time+"</span>"
+          +" ("+h.event_type+")"
+          +"</div>";
+  }).join("");
+}
+
+// ── LP log ────────────────────────────────────────────────────
+function renderLPLog(schedule){
+  const el = document.getElementById("lp-log");
+  if(!el) return;
+  if(!schedule.length){ el.innerHTML="<p class='noi'>No data.</p>"; return; }
+  el.innerHTML = schedule.map(item=>{
+    const icon   = item.smart_plug_event?"⚡":item.user_forced?"👤":item.shifted?"✅":"➡️";
+    const reason = item.is_free?"solar surplus":"cheapest slot";
+    const extra  = item.shifted && !item.user_forced
+      ? "<br><span style='color:var(--green);font-size:8px'>↳ LP shifted to "+reason+"</span>"
+      : item.user_forced
+      ? "<br><span style='color:var(--blue);font-size:8px'>↳ locked by user/plug</span>":"";
+    const cost = item.is_free?"FREE":"€"+item.price_at_hour.toFixed(4);
+    return "<div class='litem manual' style='border-left-color:"+item.color+"'>"
+          +icon+" <span>"+item.name+"</span> → "
+          +pad2(item.scheduled_hour)+":00 ("+item.price_band+", "+cost+")"
+          +extra+"</div>";
+  }).join("");
+}
+
+// ── Actions ───────────────────────────────────────────────────
+async function sendEvent(eventType){
+  const key      = document.getElementById("plug-appliance").value;
+  const timeVal  = document.getElementById("plug-time").value;  // "HH:MM"
+  const parts    = timeVal.split(":");
+  const hour     = parseInt(parts[0]||"11");
+  const minute   = parseInt(parts[1]||"0");
+  const btnId    = eventType==="unexpected"?"btn-plug":"btn-manual";
+  const origText = document.getElementById(btnId).textContent;
+  setBtn(btnId,"⏳ Rescheduling…",true);
+  try{
+    schedData = await fetch(API+"/api/event",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({appliance_key:key,time:timeVal,hour,minute,event_type:eventType})
+    }).then(r=>r.json());
+    renderAll(schedData);
+  } catch(e){ alert("Error: "+e.message); }
+  setBtn(btnId,origText,false);
+}
+
+async function regenerate(){
+  setBtn("btn-regen","⏳ Generating…",true);
+  try{
+    schedData = await fetch(API+"/api/regenerate",{
+      method:"POST",headers:{"Content-Type":"application/json"},body:"{}"
+    }).then(r=>r.json());
+    renderAll(schedData);
+  } catch(e){ alert("Error: "+e.message); }
+  setBtn("btn-regen","🔄 Next Available Day",false);
+}
+
+async function regenerateForDate(){
+  const dateVal = document.getElementById("target-date").value;
+  if(!dateVal){ alert("Please select a date first"); return; }
+  setBtn("btn-date","⏳ Generating…",true);
+  try{
+    schedData = await fetch(API+"/api/regenerate",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({target_date:dateVal})
+    }).then(r=>r.json());
+    renderAll(schedData);
+  } catch(e){ alert("Error: "+e.message); }
+  setBtn("btn-date","📅 Generate For This Date",false);
+}
+
+async function nextHour(){
+  await fetch(API+"/api/next",{method:"POST"});
+  await loadStatus();
+}
+
+// ── Init ──────────────────────────────────────────────────────
+(async function init(){
+  await loadAvailableDates();
+  await loadSchedule();
+  await loadStatus();
+  setInterval(loadStatus,   10_000);   // refresh live stats every 10 s
+  setInterval(loadSchedule, 60_000);   // refresh schedule every 60 s
+})();
+</script>
+</body>
+</html>
