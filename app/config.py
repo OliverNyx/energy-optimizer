@@ -15,9 +15,9 @@ class Config:
     STATIC_DIR = Path(os.getenv("STATIC_DIR", str(BASE_DIR / "static")))
     LOG_DIR    = Path(os.getenv("LOG_DIR",    str(BASE_DIR / "logs")))
         # LP optimizer constants
-    LP_SOLAR_BONUS_COEFF = 0.6
-    LP_PEAK_PENALTY_COEFF = 2.0
-    LP_VALLE_BONUS_COEFF = 0.5
+    LP_SOLAR_BONUS_COEFF = -0.6
+    LP_PEAK_PENALTY_COEFF = -2.0
+    LP_VALLE_BONUS_COEFF = -0.5
     LP_SOFT_PREF_PENALTY = 0.3
 
     LP_SLOT_CAP_BASE_MULT = 1.0
