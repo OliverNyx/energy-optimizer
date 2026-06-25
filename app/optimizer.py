@@ -15,7 +15,6 @@ from datetime import datetime
 from typing import Optional, List
 
 import numpy as np
-import pandas as pd
 from scipy.optimize import linprog
 
 from app.config import Config

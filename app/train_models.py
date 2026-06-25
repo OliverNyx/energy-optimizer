@@ -20,7 +20,6 @@ from pathlib import Path
 
 import joblib
 import numpy as np
-import pandas as pd
 import xgboost as xgb
 import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error, r2_score
